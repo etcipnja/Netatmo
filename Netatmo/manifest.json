@@ -1,0 +1,16 @@
+{
+"package": "Netatmo",
+"language": "python",
+"author": "etcipnja",
+"description": "Looks up precipitation and temperature in netatmo public service or your own weather station. Results will be printed in the log and saved in /tmp/weather",
+"version": "1.0.0",
+"min_os_version_major": 6,
+"url":"https://raw.githubusercontent.com/etcipnja/Netatmo/master/Netatmo/manifest.json",
+"zip": "https://github.com/etcipnja/Netatmo/archive/master.zip",
+"executable": "python",
+"args": ["Netatmot-master/Netatmo/main.py"],
+"config": [
+ {"name": "ne", "label": "North-East corner [(longitude,latitude)]:", "value": "(37.80,-122.38)"},
+ {"name": "sw", "label": "South-West corner [(longitude,latitude)]:", "value": "(37.70,-122.52)"}
+]
+}
