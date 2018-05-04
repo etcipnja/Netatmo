@@ -14,6 +14,19 @@ Later I plan to update MLH farmware to use this data for more intelligent wateri
 - SOUTH-WEST CORNER (longitude, latitude) of the south-west corner of the region around your garden
    - Example: (37.70,-122.52)
 
+If you want to fetch data from your own netatmo weather station - use the following
+- NORTH-EAST CORNER: "access_token"
+- SOUTH-WEST CORNER: <token_value>
+If you puzzled on where to get access_token - you probably need to learn some programming, start here
+https://dev.netatmo.com/resources/technical/reference/weatherapi
+
+
+# Output:
+
+Here is the sample output. "std" stands for standard deviation
+[Netatmo] Averaging on 45 stations
+[Netatmo] mean temp: 12.19C std: 0.97
+[Netatmo] mean rain: 0.10mm std: 0.34
 
 # Installation:
 
