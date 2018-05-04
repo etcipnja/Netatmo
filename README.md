@@ -24,9 +24,12 @@ https://dev.netatmo.com/resources/technical/reference/weatherapi
 # Output:
 
 Here is the sample output. "std" stands for standard deviation
+
+```
 [Netatmo] Averaging on 45 stations
 [Netatmo] mean temp: 12.19C std: 0.97
 [Netatmo] mean rain: 0.10mm std: 0.34
+```
 
 # Installation:
 
