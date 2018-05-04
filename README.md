@@ -15,10 +15,8 @@ Later I plan to update MLH farmware to use this data for more intelligent wateri
    - Example: (37.70,-122.52)
 
 If you want to fetch data from your own netatmo weather station - use the following
-- NORTH-EAST CORNER: "access_token"
-- SOUTH-WEST CORNER: <token_value>
-If you puzzled on where to get access_token - you probably need to learn some programming, start here
-https://dev.netatmo.com/resources/technical/reference/weatherapi
+- NORTH-EAST CORNER: <netatmo_login>
+- SOUTH-WEST CORNER: <netatmo_password>
 
 
 # Output:
