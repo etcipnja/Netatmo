@@ -2,33 +2,24 @@ import os
 import json
 import requests
 
-#test
-class Farmware():
+class Farmware:
     # ------------------------------------------------------------------------------------------------------------------
-    def __init__(self):
+    def __init__(self,app_name):
+        self.app_name=app_name
         self.api_url = 'https://my.farmbot.io/api/'
         try:
-            api_token = os.environ['API_TOKEN']
-        except KeyError:
-            raise ValueError('API_TOKEN not set')
+            self.headers = {'Authorization': 'Bearer ' + os.environ['API_TOKEN'], 'content-type': "application/json"}
+        except :
+            print("API_TOKEN is not set, you gonna have bad time")
 
-        self.headers = {'Authorization': 'Bearer ' + api_token, 'content-type': "application/json"}
-
-    # ------------------------------------------------------------------------------------------------------------------
-    def handle_error(self, response):
-        if response.status_code != 200:
-            raise ValueError(
-                "{} {} returned {}".format(response.request.method, response.request.path_url, response.status_code))
-        return
-
-    # ------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------
     def log(self, message, message_type='info'):
 
         try:
-            log_message = '[{}] {}'.format(APP_NAME, message)
+            log_message = '[{}] {}'.format(self.app_name, message)
             node = {'kind': 'send_message', 'args': {'message': log_message, 'message_type': message_type}}
-            response = requests.post(os.environ['FARMWARE_URL']+'api/v1/celery_script', data=json.dumps(node), headers=self.headers)
-            self.handle_error(response)
+            response = requests.post(os.environ['FARMWARE_URL'] + 'api/v1/celery_script', data=json.dumps(node),headers=self.headers)
+            response.raise_for_status()
             message = log_message
         except: pass
 
@@ -37,13 +28,13 @@ class Farmware():
     # ------------------------------------------------------------------------------------------------------------------
     def get(self, enpoint):
         response = requests.get(self.api_url + enpoint, headers=self.headers)
-        self.handle_error(response)
+        response.raise_for_status()
         return response.json()
 
     # ------------------------------------------------------------------------------------------------------------------
     def put(self, enpoint, data):
         response = requests.put(self.api_url + enpoint, headers=self.headers, data=json.dumps(data))
-        self.handle_error(response)
+        response.raise_for_status()
         return response.json()
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -55,7 +46,7 @@ class Farmware():
                 node = {'kind': 'execute', 'args': {'sequence_id': sequence['id']}}
                 response = requests.post(os.environ['FARMWARE_URL'] + 'api/v1/celery_script', data=json.dumps(node),
                                          headers=self.headers)
-                self.handle_error(response)
+                response.raise_for_status()
 
     # ------------------------------------------------------------------------------------------------------------------
     def move_absolute(self, location, offset, debug=False, message=''):
@@ -74,6 +65,6 @@ class Farmware():
         if not debug:
             response = requests.post(os.environ['FARMWARE_URL'] + 'api/v1/celery_script', data=json.dumps(node),
                                      headers=self.headers)
-            self.handle_error(response)
+            response.raise_for_status()
 
 
