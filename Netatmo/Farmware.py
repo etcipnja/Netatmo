@@ -45,7 +45,7 @@ class Farmware:
         if not self.debug:
             response = requests.delete(self.api_url + enpoint, headers=self.headers)
             response.raise_for_status()
-            return response.json()
+            return
     # ------------------------------------------------------------------------------------------------------------------
     def post(self, enpoint, data):
         if not self.debug:
@@ -79,7 +79,7 @@ class Farmware:
                 response.raise_for_status()
 
     # ------------------------------------------------------------------------------------------------------------------
-    def move_absolute(self, location, offset, message=''):
+    def move_absolute(self, location, offset={'x': 0, 'y': 0, 'z': 0}, message=''):
 
         if message!=None:
             self.log('{}Moving absolute: {} {}'.format(message, str(location), "" if offset=={'y': 0, 'x': 0, 'z': 0} else str(offset)))
