@@ -18,7 +18,6 @@ class Netatmo(Farmware):
             self.nes=os.environ.get(prefix + "_ne", "(37.80,-122.38)")
             self.sws=os.environ.get(prefix + "_sw", "(37.70,-122.52)")
 
-
             self.ne = ast.literal_eval(self.nes)
             self.sw = ast.literal_eval(self.sws)
 
@@ -55,36 +54,11 @@ class Netatmo(Farmware):
 
         return response.json()["access_token"]
 
-    # ------------------------------------------------------------------------------------------------------------------
-    def load_weather(self,weather_station):
-
-        today = datetime.datetime.utcnow().strftime('%Y-%m-%d')
-        self.weather = {}
-        try:
-            self.weather=ast.literal_eval(weather_station['meta']['current_weather'])
-            if not isinstance(self.weather, dict): raise ValueError
-            # leave only last 7 days
-            self.weather = {k: v for (k, v) in self.weather.items() if
-                            datetime.date.today() - datetime.datetime.strptime(k,'%Y-%m-%d').date() < datetime.timedelta(days=7)}
-            self.log('Historic weather: {}'.format(self.weather))
-        except Exception as e:
-            pass
-
-        if today not in self.weather: self.weather[today]={'max_temperature':None,'min_temperature':None,'rain24':None}
-        return self.weather[today]
 
     # ----------------------------------------------------------------------------------------------------------------------
     def run(self):
 
-        points=self.get("points")
-        tools=self.get("tools")
-        try:
-            watering_tool=next(x for x in tools if 'water' in x['name'].lower())
-            weather_station=next(x for x in points if x['pointer_type']=='ToolSlot' and x['tool_id']==watering_tool['id'])
-        except:
-            self.log("No watering tool detected (I save weatehr into the watering tool meta)")
-            pass
-        today=self.load_weather(weather_station)
+        today=self.load_weather()
 
         #using private weather station
         if self.private_mode:
@@ -150,8 +124,7 @@ class Netatmo(Farmware):
             else: today['min_temperature'] = min(mean_t,today['min_temperature'])
             today['rain24'] = mean_r
 
-        weather_station['meta']['current_weather']=str(self.weather)
-        self.post('points/{}'.format(weather_station['id']),weather_station)
+        self.save_weather()
 
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
