@@ -1,6 +1,20 @@
 import os
 import json
 import requests
+import datetime
+import time
+
+#timezone
+tz=0
+# long date representation to date object
+def l2d(long_s): return datetime.datetime.strptime(long_s, "%Y-%m-%dT%H:%M:%S.%fZ")
+def s2d(short_s): return datetime.datetime.strptime(short_s, "%Y-%m-%d")
+# date object to long date representation
+def d2l(date): return date.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+def d2s(date): return date.strftime("%Y-%m-%d")
+# retrun today in UTC
+def today_utc(): return datetime.datetime.utcnow()
+
 
 class Farmware:
     # ------------------------------------------------------------------------------------------------------------------
@@ -16,14 +30,13 @@ class Farmware:
     # ------------------------------------------------------------------------------------------------------------------
     def log(self, message, message_type='info'):
 
-        if not self.debug:
-            try:
-                log_message = '[{}] {}'.format(self.app_name, message)
-                node = {'kind': 'send_message', 'args': {'message': log_message, 'message_type': message_type}}
-                response = requests.post(os.environ['FARMWARE_URL'] + 'api/v1/celery_script', data=json.dumps(node),headers=self.headers)
-                response.raise_for_status()
-                message = log_message
-            except: pass
+        try:
+            log_message = '[{}] {}'.format(self.app_name, message)
+            node = {'kind': 'send_message', 'args': {'message': log_message, 'message_type': message_type}}
+            response = requests.post(os.environ['FARMWARE_URL'] + 'api/v1/celery_script', data=json.dumps(node),headers=self.headers)
+            response.raise_for_status()
+            message = log_message
+        except: pass
 
         print(message)
 
