@@ -1,10 +1,5 @@
-import ast
-import requests
 import numpy
-import os
-import sys
-import datetime
-from Farmware import Farmware
+from Farmware import *
 
 class Netatmo(Farmware):
     def __init__(self):
@@ -12,11 +7,13 @@ class Netatmo(Farmware):
 
     # ------------------------------------------------------------------------------------------------------------------
     def load_config(self):
-        prefix = self.app_name.lower().replace('-', '_')
+
+        super(Netatmo, self).load_config()
+
         self.private_mode = False
         try:
-            self.nes=os.environ.get(prefix + "_ne", "(37.80,-122.38)")
-            self.sws=os.environ.get(prefix + "_sw", "(37.70,-122.52)")
+            self.nes=self.get_arg('ne', "(37.80,-122.38)")
+            self.sws = self.get_arg('sws', "(37.70,-122.52)")
 
             self.ne = ast.literal_eval(self.nes)
             self.sw = ast.literal_eval(self.sws)
@@ -31,8 +28,8 @@ class Netatmo(Farmware):
     # ------------------------------------------------------------------------------------------------------------------
     def get_access_token(self, login='', password=''):
 
-        client_id = '5aebaf2b11349f98108c093d'
-        client_secret = 'HXPqOM0i5fxWCME5xkXhra2WJnO'
+        client_id = '5afc26dd13475dee138c5873'
+        client_secret = 'J6mWnRcq4BRh3CnFOvAI900EEjRJD6LdDpOzMnLWicVqS'
 
         if login != '':
             payload = {'grant_type': 'password',
@@ -42,15 +39,15 @@ class Netatmo(Farmware):
                        'client_secret': client_secret}
         else:
             payload = {'grant_type': 'refresh_token',
-                       'refresh_token': '5aebaefe0f21e1d8be8b68c2|325edd10a01a14ed5683dd35fd22cac2',
+                       'refresh_token': '5afc25d7923dfe791f8b5fcc|d6e069df8e512da02731449e80ffdc0e',
                        'client_id': client_id,
                        'client_secret': client_secret}
 
         response = requests.post("https://api.netatmo.com/oauth2/token", data=payload)
         response.raise_for_status()
-        print("Your access token is: {}".format(response.json()["access_token"]))
-        print("Your refresh token is: {}".format(response.json()["refresh_token"]))
-        print("Expires in: {}m".format(response.json()["expires_in"] / 60))
+        #print("Your access token is: {}".format(response.json()["access_token"]))
+        #print("Your refresh token is: {}".format(response.json()["refresh_token"]))
+        #print("Expires in: {}m".format(response.json()["expires_in"] / 60))
 
         return response.json()["access_token"]
 
@@ -58,12 +55,13 @@ class Netatmo(Farmware):
     # ----------------------------------------------------------------------------------------------------------------------
     def run(self):
 
-        today=self.load_weather()
-
+        self.load_weather()
+        td = d2s(today_local())
         #using private weather station
         if self.private_mode:
             self.log('Private mode, contacting your weather station')
             params={'access_token': self.get_access_token(self.nes, self.sws)}
+
             response = requests.post("https://api.netatmo.com/api/getstationsdata", params=params)
             response.raise_for_status()
             data = response.json()["body"]
@@ -73,11 +71,11 @@ class Netatmo(Farmware):
 
             outside = data['devices'][0]['modules'][0]
             rain = data['devices'][0]['modules'][1]
-            self.log('max_temp={:.2f}C, min_temp={:.2f}C, rain={:.2f}mm'.format(outside['dashboard_data']['max_temp'],outside['dashboard_data']['min_temp'],rain['dashboard_data']['sum_rain_24']))
 
-            today['max_temperature']=outside['dashboard_data']['max_temp']
-            today['min_temperature']=outside['dashboard_data']['min_temp']
-            today['rain24']=rain['dashboard_data']['sum_rain_24']
+            self.weather[td]={}
+            self.weather[td]['max_temperature']=outside['dashboard_data']['max_temp']
+            self.weather[td]['min_temperature']=outside['dashboard_data']['min_temp']
+            self.weather[td]['rain24']=rain['dashboard_data']['sum_rain_24']
 
         # using public data
         else:
@@ -113,17 +111,20 @@ class Netatmo(Farmware):
                     if 'rain_24h' in m[n]:
                         rain24.append(float(m[n]['rain_24h']))
 
+            if len(temperature)==0 or len(rain24)==0:
+                raise ValueError('Did not get data about rain or temperature from stations in this area, try to enlarge the box')
             mean_t=float('{:.2f}'.format(numpy.mean(temperature)))
             mean_r=float('{:.2f}'.format(numpy.mean(rain24)))
 
-            self.log('mean temp: {:.2f}C std: {:.2f}'.format(mean_t,numpy.std(temperature)))
-            self.log('mean rain: {:.2f}mm std: {:.2f}'.format(mean_r,numpy.std(rain24)))
-            if today['max_temperature']==None: today['max_temperature']=mean_t
-            else: today['max_temperature'] = max(mean_t,today['max_temperature'])
-            if today['min_temperature'] == None: today['min_temperature']=mean_t
-            else: today['min_temperature'] = min(mean_t,today['min_temperature'])
-            today['rain24'] = mean_r
+            if td not in self.weather:
+                self.weather[td]['min_temperature'] = mean_t
+                self.weather[td]['max_temperature']=mean_t
+            else:
+                self.weather[td]['max_temperature'] = max(mean_t,self.weather[td]['max_temperature'])
+                self.weather[td]['min_temperature'] = min(mean_t,self.weather[td]['min_temperature'])
+            self.weather[td]['rain24'] = mean_r
 
+        self.log('Weather: {}'.format(self.weather))
         self.save_weather()
 
 # ----------------------------------------------------------------------------------------------------------------------
