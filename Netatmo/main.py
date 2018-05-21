@@ -59,7 +59,7 @@ class Netatmo(Farmware):
         td = d2s(today_local())
         #using private weather station
         if self.private_mode:
-            self.log('Private mode, contacting your weather station')
+            self.log('Private mode, contacting your weather station...')
             params={'access_token': self.get_access_token(self.nes, self.sws)}
 
             response = requests.post("https://api.netatmo.com/api/getstationsdata", params=params)
@@ -96,7 +96,7 @@ class Netatmo(Farmware):
             if len(data)==0:
                 raise ValueError('No weataher stations found around you, try to enlarge the box')
 
-            self.log("Averaging on {} stations".format(len(data)))
+            self.log("Averaging on {} stations...".format(len(data)))
             temperature=[]
             rain24=[]
 
@@ -137,7 +137,10 @@ if __name__ == "__main__":
         sys.exit(0)
 
     except requests.exceptions.HTTPError as error:
-        app.log('HTTP error {} {} '.format(error.response.status_code,error.response.text[0:100]), 'error')
+        if error.response.text[0:100]==u'{"error":"invalid_grant"}':
+            app.log('Invalid credentials {} {}'.format(app.nes,app.sws), 'error')
+        else:
+            app.log('HTTP error {} {} '.format(error.response.status_code,error.response.text[0:100]), 'error')
     except Exception as e:
         app.log('Something went wrong: {}'.format(str(e)), 'error')
     sys.exit(1)
