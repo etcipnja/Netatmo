@@ -13,7 +13,7 @@ class Netatmo(Farmware):
         self.private_mode = False
         try:
             self.nes=self.get_arg('ne', "(37.80,-122.38)")
-            self.sws = self.get_arg('sws', "(37.70,-122.52)")
+            self.sws = self.get_arg('sw', "(37.70,-122.52)")
 
             self.ne = ast.literal_eval(self.nes)
             self.sw = ast.literal_eval(self.sws)
