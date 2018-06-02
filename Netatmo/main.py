@@ -55,7 +55,7 @@ class Netatmo(Farmware):
     # ----------------------------------------------------------------------------------------------------------------------
     def run(self):
 
-        self.load_weather()
+        self.weather.load()
         td = d2s(today_local())
         #using private weather station
         if self.private_mode:
@@ -72,10 +72,10 @@ class Netatmo(Farmware):
             outside = data['devices'][0]['modules'][0]
             rain = data['devices'][0]['modules'][1]
 
-            self.weather[td]={}
-            self.weather[td]['max_temperature']=outside['dashboard_data']['max_temp']
-            self.weather[td]['min_temperature']=outside['dashboard_data']['min_temp']
-            self.weather[td]['rain24']=rain['dashboard_data']['sum_rain_24']
+            self.weather()[td]={}
+            self.weather()[td]['max_temperature']=outside['dashboard_data']['max_temp']
+            self.weather()[td]['min_temperature']=outside['dashboard_data']['min_temp']
+            self.weather()[td]['rain24']=rain['dashboard_data']['sum_rain_24']
 
         # using public data
         else:
@@ -116,16 +116,16 @@ class Netatmo(Farmware):
             mean_t=float('{:.2f}'.format(numpy.mean(temperature)))
             mean_r=float('{:.2f}'.format(numpy.mean(rain24)))
 
-            if td not in self.weather:
-                self.weather[td]['min_temperature'] = mean_t
-                self.weather[td]['max_temperature']=mean_t
+            if td not in self.weather():
+                self.weather()[td]['min_temperature'] = mean_t
+                self.weather()[td]['max_temperature']=mean_t
             else:
-                self.weather[td]['max_temperature'] = max(mean_t,self.weather[td]['max_temperature'])
-                self.weather[td]['min_temperature'] = min(mean_t,self.weather[td]['min_temperature'])
-            self.weather[td]['rain24'] = mean_r
+                self.weather()[td]['max_temperature'] = max(mean_t,self.weather()[td]['max_temperature'])
+                self.weather()[td]['min_temperature'] = min(mean_t,self.weather()[td]['min_temperature'])
+            self.weather()[td]['rain24'] = mean_r
 
-        self.log('Weather: {}'.format(self.weather))
-        self.save_weather()
+        self.log('Weather:\n{}'.format(self.weather))
+        self.weather.save()
 
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
