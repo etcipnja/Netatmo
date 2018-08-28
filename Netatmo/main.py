@@ -11,19 +11,16 @@ class Netatmo(Farmware):
         super(Netatmo, self).load_config()
 
         self.private_mode = False
-        try:
-            self.nes=self.get_arg('ne', "(37.80,-122.38)")
-            self.sws = self.get_arg('sw', "(37.70,-122.52)")
 
-            self.ne = ast.literal_eval(self.nes)
-            self.sw = ast.literal_eval(self.sws)
+        self.get_arg('ne', "eugene.tcipnjatov@gmail.com" , tuple) #(37.80,-122.38)
+        self.get_arg('sw', "Safety_123", tuple) #""(37.70,-122.52)"
 
-            if not isinstance(self.ne, tuple) or not isinstance(self.ne[0], float) or not isinstance(self.ne[1], float):
-                raise ValueError
-            if not isinstance(self.sw, tuple) or not isinstance(self.sw[0], float) or not isinstance(self.sw[1], float):
-                raise ValueError
-        except:
-            self.private_mode=True
+        if not isinstance(self.args['ne'][0], float) or not isinstance(self.args['ne'][1], float):
+            self.args['ne'] = ''.join(self.args['ne'])
+            self.private_mode = True
+        if not isinstance(self.args['sw'][0], float) or not isinstance(self.args['sw'][1], float):
+            self.args['sw'] = ''.join(self.args['sw'])
+            self.private_mode = True
 
     # ------------------------------------------------------------------------------------------------------------------
     def get_access_token(self, login='', password=''):
@@ -60,7 +57,7 @@ class Netatmo(Farmware):
         #using private weather station
         if self.private_mode:
             self.log('Private mode, contacting your weather station...')
-            params={'access_token': self.get_access_token(self.nes, self.sws)}
+            params={'access_token': self.get_access_token(self.args["ne"], self.args["sw"])}
 
             response = requests.post("https://api.netatmo.com/api/getstationsdata", params=params)
             response.raise_for_status()
@@ -69,23 +66,27 @@ class Netatmo(Farmware):
             if len(data['devices']) == 0:
                 raise ValueError("You don't seem to have a weather station?")
 
-            outside = data['devices'][0]['modules'][0]
-            rain = data['devices'][0]['modules'][1]
+            outside = data['devices'][0]['modules'][0]['dashboard_data']['Temperature']
+            rain = data['devices'][0]['modules'][1]['dashboard_data']['Rain']
 
-            self.weather()[td]={}
-            self.weather()[td]['max_temperature']=outside['dashboard_data']['max_temp']
-            self.weather()[td]['min_temperature']=outside['dashboard_data']['min_temp']
-            self.weather()[td]['rain24']=rain['dashboard_data']['sum_rain_24']
+            if td not in self.weather():
+                self.weather()[td]['min_temperature'] = outside
+                self.weather()[td]['max_temperature']= outside
+            else:
+                self.weather()[td]['max_temperature'] = max(outside,self.weather()[td]['max_temperature'])
+                self.weather()[td]['min_temperature'] = min(outside,self.weather()[td]['min_temperature'])
+
+            self.weather()[td]['rain24']=rain
 
         # using public data
         else:
-            self.log('Community mode: {} - {}'.format(self.ne, self.sw))
+            self.log('Community mode: {} - {}'.format(self.args["ne"], self.args["sw"]))
             params = {
                 'access_token': self.get_access_token(),
-                'lat_ne': self.ne[0],
-                'lat_sw': self.sw[0],
-                'lon_ne': self.ne[1],
-                'lon_sw': self.sw[1],
+                'lat_ne': self.args["ne"][0],
+                'lat_sw': self.args["sw"][0],
+                'lon_ne': self.args["ne"][1],
+                'lon_sw': self.args["sw"][1],
                 'filter': 'true',
             }
 
