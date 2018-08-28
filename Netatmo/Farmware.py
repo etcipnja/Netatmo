@@ -87,17 +87,26 @@ class Farmware(object):
         self.weather=Weather(self)
 
         try:
-            self.api_token=os.environ['API_TOKEN']
+            self.api_token = os.environ.get('API_TOKEN','')
+            if self.api_token=='':  #this is local execution situation
+                with open('../../Farmbot.lib/API_KEY.txt', 'r') as myfile:
+                    self.api_token = myfile.read().replace('\n', '')
+
+            self.farmware_url = os.environ.get('FARMWARE_URL','')
+            if self.farmware_url == '':
+                with open('../../Farmbot.lib/FARMWARE_URL.txt', 'r') as myfile:
+                    self.farmware_url = myfile.read().replace('\n', '')
+
             self.headers = {'Authorization': 'Bearer ' + self.api_token, 'content-type': "application/json"}
             encoded_payload = self.api_token.split('.')[1]
             encoded_payload += '=' * (4 - len(encoded_payload) % 4)
             token = json.loads(base64.b64decode(encoded_payload).decode('utf-8'))
             self.bot_id=token['bot']
-            #self.api_url = 'https:'+token['iss']+'/api/'
-            self.api_url='https://my.farmbot.io/api/'
-            self.mqtt_url=token['mqtt']
+            self.api_url = 'https:'+token['iss']+'/api/'
+            # self.api_url='https://my.farmbot.io/api/'
+            self.mqtt_url = token['mqtt']
         except :
-            print("API_TOKEN is not set, you gonna have a bad time")
+            print("API_TOKEN or FARMWARE_URL is not set, you gonna have a bad time")
             sys.exit(1)
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -113,26 +122,30 @@ class Farmware(object):
     def load_config(self):
         global tz
         device = self.get('device')
+        self.head = self.state()['location_data']['position']
         tz = device['tz_offset_hrs']
+
 
     # ------------------------------------------------------------------------------------------------------------------
     # loads config parameters
-    def get_arg(self, name, default):
+    def get_arg(self, name, default, tp):
         try:
             prefix = self.app_name.lower().replace('-', '_')
-            if type(default)!=tuple:
-                self.args[name] = type(default)(os.environ.get(prefix + '_'+name, default))
+            if tp!=list:
+                self.args[name] = tp(os.environ.get(prefix + '_'+name, default))
+                if self.args[name] == 'None': self.args[name] = None
             else:
                 self.args[name] = ast.literal_eval(os.environ.get(prefix + '_' + name, str(default)))
+                if type(self.args[name])!=tp and self.args[name]!=None:
+                    raise ValueError
 
-            if self.args[name]=='None': self.args[name]=None
             if name=='action':
                 if self.args[name]!='real':
                     if self.args[name] == 'local': self.local = True
                     self.debug = True
                     self.log("TEST MODE, NO sequences or movement will be run, plants will NOT be updated",'warn')
         except:
-            raise ValueError('Error parsing paramenter {}'.format(name))
+            raise ValueError('Error parsing paramenter [{}]'.format(name))
 
         return self.args[name]
 
@@ -144,7 +157,7 @@ class Farmware(object):
             if not self.local:
                 log_message = '[{}] {}'.format(self.app_name, message)
                 node = {'kind': 'send_message', 'args': {'message': log_message, 'message_type': message_type}}
-                response = requests.post(os.environ['FARMWARE_URL'] + 'api/v1/celery_script', data=json.dumps(node),headers=self.headers)
+                response = requests.post(self.farmware_url + 'api/v1/celery_script', data=json.dumps(node),headers=self.headers)
                 response.raise_for_status()
                 message = log_message
         except: pass
@@ -154,10 +167,31 @@ class Farmware(object):
     # ------------------------------------------------------------------------------------------------------------------
     def sync(self):
         if not self.debug:
-            time.sleep(5)
+            time.sleep(10)
+
+        sync = ""
+        for i in range(1,2):
+            self.log("...actually syncing...")
             node = {'kind': 'sync', 'args': {}}
-            response = requests.post(os.environ['FARMWARE_URL'] + 'api/v1/celery_script', data=json.dumps(node),headers=self.headers)
+            response = requests.post(self.farmware_url + 'api/v1/celery_script', data=json.dumps(node),headers=self.headers)
             response.raise_for_status()
+
+            cnt = 0
+            for cnt in range(1,30):
+                sync=self.state()['informational_settings']['sync_status']
+                self.log("interim status {}".format(sync))
+                if sync== "synced" or sync == "sync_error": break
+                time.sleep(1)
+            if cnt>=30: raise ValueError('Sync error, bot failed to complete syncing')
+            if sync != "sync_error": break
+
+        self.log('Sync status {}'.format(self.state()['informational_settings']['sync_status']))
+
+    # ------------------------------------------------------------------------------------------------------------------
+    def state(self):
+            response = requests.get(self.farmware_url + '/api/v1/bot/state', headers=self.headers)
+            response.raise_for_status()
+            return response.json()
 
     # ------------------------------------------------------------------------------------------------------------------
     def get(self, enpoint):
@@ -199,24 +233,16 @@ class Farmware(object):
                 self.log('{}Executing sequence: {}({})'.format(message, sequence['name'].upper(), sequence['id']))
             if not self.debug:
                 node = {'kind': 'execute', 'args': {'sequence_id': sequence['id']}}
-                response = requests.post(os.environ['FARMWARE_URL'] + 'api/v1/celery_script', data=json.dumps(node),
+                response = requests.post(self.farmware_url + 'api/v1/celery_script', data=json.dumps(node),
                                          headers=self.headers)
                 response.raise_for_status()
 
     # ------------------------------------------------------------------------------------------------------------------
     def read_status(self):
         node = {'kind': 'read_status', 'args': {}}
-        response = requests.post(os.environ['FARMWARE_URL'] + 'api/v1/celery_script', data=json.dumps(node),
+        response = requests.post(self.farmware_url + 'api/v1/celery_script', data=json.dumps(node),
                                  headers=self.headers)
         response.raise_for_status()
-
-    # ------------------------------------------------------------------------------------------------------------------
-    def move_absolute_safe(self, location, offset={'x': 0, 'y': 0, 'z': 0}, message=''):
-        try:
-            if self.head['z']<location['z']:
-                self.move_absolute({'x':self.head['x'],'y':self.head['y'],'z':location['z']}, {'x': 0, 'y': 0, 'z': 0}, None)
-        except:  pass
-        self.move_absolute(location,offset,message)
 
     # ------------------------------------------------------------------------------------------------------------------
     def move_absolute(self, location, offset={'x': 0, 'y': 0, 'z': 0}, message=''):
@@ -233,10 +259,10 @@ class Farmware(object):
                 }
 
         if not self.debug:
-            response = requests.post(os.environ['FARMWARE_URL'] + 'api/v1/celery_script', data=json.dumps(node),
+            response = requests.post(self.farmware_url + 'api/v1/celery_script', data=json.dumps(node),
                                      headers=self.headers)
             response.raise_for_status()
-        self.head = {'x': location['x']+offset['x'], 'y': location['y']+offset['y'], 'z': location['y']+offset['y']}
+        self.head = {'x': location['x']+offset['x'], 'y': location['y']+offset['y'], 'z': location['z']+offset['z']}
 
     # ------------------------------------------------------------------------------------------------------------------
     def points(self):
