@@ -70,6 +70,7 @@ class Netatmo(Farmware):
             rain = data['devices'][0]['modules'][1]['dashboard_data']['Rain']
 
             if td not in self.weather():
+                self.weather()[td]={}
                 self.weather()[td]['min_temperature'] = outside
                 self.weather()[td]['max_temperature']= outside
             else:

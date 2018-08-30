@@ -3,7 +3,7 @@
 "language": "python",
 "author": "etcipnja",
 "description": "Looks up precipitation and temperature in netatmo public service or your own weather station.",
-"version": "1.3.0",
+"version": "1.3.1",
 "min_os_version_major": 6,
 "url":"https://raw.githubusercontent.com/etcipnja/Netatmo/master/Netatmo/manifest.json",
 "zip": "https://github.com/etcipnja/Netatmo/archive/master.zip",
